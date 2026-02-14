@@ -43,6 +43,10 @@ Files can be uploaded to any S3 compatible storage, Azure, or GCP.
 
 Full docs available [here](https://docs.livekit.io/guides/egress/)
 
+Additional project architecture guidance:
+
+- [Evido external conference architecture guideline](docs/evido-external-conference-architecture-guideline.md)
+
 ### Config
 
 The Egress service takes a yaml config file:
