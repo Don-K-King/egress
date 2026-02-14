@@ -7,3 +7,6 @@ media-samples/
 test/output/*
 test/*.yaml
 !test/config-sample.yaml
+
+# Local Egress development overrides
+deploy/local/egress.config.yaml

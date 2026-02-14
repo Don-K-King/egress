@@ -1,26 +1,9 @@
 name: egress-local
 
 services:
-  redis:
-    image: redis:7-alpine
-    command: ["redis-server", "--appendonly", "yes", "--save", "", "--protected-mode", "yes"]
-    restart: unless-stopped
-    healthcheck:
-      test: ["CMD", "redis-cli", "ping"]
-      interval: 5s
-      timeout: 3s
-      retries: 10
-    volumes:
-      - redis-data:/data
-    networks:
-      - egress
-
   egress:
     image: livekit/egress:latest
     restart: unless-stopped
-    depends_on:
-      redis:
-        condition: service_healthy
     environment:
       EGRESS_CONFIG_FILE: /etc/egress/config.yaml
     volumes:
@@ -31,11 +14,8 @@ services:
     # security_opt:
     #   - seccomp=/seccomp/chrome-sandboxing-seccomp-profile.json
     networks:
-      - egress
+      - livekit-net
 
 networks:
-  egress:
-    name: egress-local-net
-
-volumes:
-  redis-data:
+  livekit-net:
+    external: true

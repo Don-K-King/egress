@@ -5,12 +5,12 @@ log_level: debug
 api_key: your-livekit-api-key
 api_secret: your-livekit-api-secret
 
-# Use your LiveKit endpoint. For local server on the same docker network,
-# use ws://livekit:7880 and add a livekit service to compose.
-ws_url: ws://host.docker.internal:7880
+# Use the LiveKit endpoint from the shared livekit-net docker network.
+ws_url: ws://livekit:7880
 insecure: true
 
 redis:
+  # Reuse Redis from the LiveKit stack. Do not run a second Redis for Egress.
   address: redis:6379
 
 # Optional local limits to avoid runaway jobs
