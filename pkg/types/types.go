@@ -24,15 +24,17 @@ type FileExtension string
 
 const (
 	// request types
-	RequestTypeRoomComposite  = "room_composite"
-	RequestTypeWeb            = "web"
-	RequestTypeParticipant    = "participant"
-	RequestTypeTrackComposite = "track_composite"
-	RequestTypeTrack          = "track"
+	RequestTypeRoomComposite      = "room_composite"
+	RequestTypeWeb                = "web"
+	RequestTypeParticipant        = "participant"
+	RequestTypeTrackComposite     = "track_composite"
+	RequestTypeTrack              = "track"
+	RequestTypeExternalConference = "external_conference"
 
 	// source types
-	SourceTypeWeb SourceType = "web"
-	SourceTypeSDK SourceType = "sdk"
+	SourceTypeWeb            SourceType = "web"
+	SourceTypeSDK            SourceType = "sdk"
+	SourceTypeExternalIngest SourceType = "external_ingest"
 
 	// egress types
 	EgressTypeStream    EgressType = "stream"

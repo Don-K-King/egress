@@ -22,6 +22,7 @@ import (
 
 	"github.com/livekit/egress/pkg/types"
 	"github.com/livekit/protocol/livekit"
+	"github.com/livekit/protocol/rpc"
 )
 
 func TestSegmentNaming(t *testing.T) {
@@ -131,4 +132,65 @@ func TestValidateAndUpdateOutputParamsRejectsVideoFileMP3(t *testing.T) {
 	err := p.validateAndUpdateOutputParams()
 	require.Error(t, err)
 	require.ErrorContains(t, err, "format audio/mpeg incompatible with codec video/h264")
+}
+
+func TestPipelineConfigUpdateExternalConferenceRequest(t *testing.T) {
+	p := &PipelineConfig{BaseConfig: BaseConfig{WsUrl: "ws://localhost"}, Outputs: make(map[types.EgressType][]OutputConfig)}
+	req := &rpc.StartEgressRequest{
+		EgressId: "eg_external",
+		Token:    "token",
+		Request: &rpc.StartEgressRequest_Web{Web: &livekit.WebEgressRequest{
+			Url: "https://example.com/ingest?requestType=external_conference&sessionId=s1&conferenceId=c1&participantId=p1&trackId=t1&role=audio",
+			FileOutputs: []*livekit.EncodedFileOutput{{
+				Filepath: "external.mp4",
+			}},
+		}},
+	}
+
+	err := p.Update(req)
+	require.NoError(t, err)
+	require.Equal(t, types.RequestTypeExternalConference, p.RequestType)
+	require.Equal(t, types.SourceTypeExternalIngest, p.SourceType)
+	require.Equal(t, "s1", p.SessionID)
+	require.Equal(t, "c1", p.ConferenceID)
+	require.Equal(t, "p1", p.ParticipantID)
+	require.Equal(t, "t1", p.IngestTrackID)
+	require.True(t, p.AudioEnabled)
+	require.False(t, p.VideoEnabled)
+}
+
+func TestPipelineConfigUpdateExternalConferenceRequestRejectsInvalidRole(t *testing.T) {
+	p := &PipelineConfig{BaseConfig: BaseConfig{WsUrl: "ws://localhost"}, Outputs: make(map[types.EgressType][]OutputConfig)}
+	req := &rpc.StartEgressRequest{
+		EgressId: "eg_external",
+		Token:    "token",
+		Request: &rpc.StartEgressRequest_Web{Web: &livekit.WebEgressRequest{
+			Url: "https://example.com/ingest?requestType=external_conference&sessionId=s1&conferenceId=c1&participantId=p1&trackId=t1&role=admin",
+			FileOutputs: []*livekit.EncodedFileOutput{{
+				Filepath: "external.mp4",
+			}},
+		}},
+	}
+
+	err := p.Update(req)
+	require.Error(t, err)
+	require.ErrorContains(t, err, "role")
+}
+
+func TestPipelineConfigUpdateExternalConferenceRequestRejectsInvalidIdentifiers(t *testing.T) {
+	p := &PipelineConfig{BaseConfig: BaseConfig{WsUrl: "ws://localhost"}, Outputs: make(map[types.EgressType][]OutputConfig)}
+	req := &rpc.StartEgressRequest{
+		EgressId: "eg_external",
+		Token:    "token",
+		Request: &rpc.StartEgressRequest_Web{Web: &livekit.WebEgressRequest{
+			Url: "https://example.com/ingest?requestType=external_conference&sessionId=s/1&conferenceId=c1&participantId=p1&trackId=t1&role=video",
+			FileOutputs: []*livekit.EncodedFileOutput{{
+				Filepath: "external.mp4",
+			}},
+		}},
+	}
+
+	err := p.Update(req)
+	require.Error(t, err)
+	require.ErrorContains(t, err, "sessionId")
 }
