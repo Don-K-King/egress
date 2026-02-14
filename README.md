@@ -196,6 +196,30 @@ docker run --rm \
 
 You can then use our [cli](https://github.com/livekit/livekit-cli) to submit egress requests to your server.
 
+#### Optional: docker compose setup (recommended for repeatable local runs)
+
+A ready-to-use compose stack is available in `deploy/local/` and keeps Redis private to the compose network (instead of exposing Redis on your host).
+
+```shell
+cd deploy/local
+cp egress.config.yaml.example egress.config.yaml
+mkdir -p output
+# edit egress.config.yaml with your livekit api_key/api_secret/ws_url
+docker compose up -d
+```
+
+Check logs:
+
+```shell
+docker compose logs -f egress
+```
+
+Stop the stack:
+
+```shell
+docker compose down
+```
+
 ### Chrome sandboxing
 
 By default, Room Composite and Web egresses run with Chrome sandboxing disabled. This is because the default docker security settings prevent Chrome from
