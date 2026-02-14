@@ -1,0 +1,21 @@
+# Copy this file to deploy/local/egress.config.yaml and replace all placeholder values.
+# This config is intended for local development only.
+
+log_level: debug
+api_key: your-livekit-api-key
+api_secret: your-livekit-api-secret
+
+# Use your LiveKit endpoint. For local server on the same docker network,
+# use ws://livekit:7880 and add a livekit service to compose.
+ws_url: ws://host.docker.internal:7880
+insecure: true
+
+redis:
+  address: redis:6379
+
+# Optional local limits to avoid runaway jobs
+# session_limits:
+#   file_output_max_duration: 1h
+
+# Optional hardening (requires security_opt seccomp profile in compose)
+# enable_chrome_sandbox: true
