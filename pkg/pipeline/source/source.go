@@ -43,6 +43,9 @@ func New(ctx context.Context, p *config.PipelineConfig, callbacks *gstreamer.Cal
 	case types.SourceTypeSDK:
 		return NewSDKSource(ctx, p, callbacks)
 
+	case types.SourceTypeExternalIngest:
+		return NewExternalIngestSource(ctx, p, callbacks)
+
 	default:
 		return nil, errors.ErrInvalidInput("request")
 	}

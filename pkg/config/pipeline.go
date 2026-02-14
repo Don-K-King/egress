@@ -18,6 +18,7 @@ import (
 	"context"
 	"net/url"
 	"path"
+	"regexp"
 	"strings"
 	"time"
 
@@ -61,13 +62,23 @@ type PipelineConfig struct {
 }
 
 var (
-	tracer = otel.Tracer("github.com/livekit/egress/pkg/config")
+	tracer                        = otel.Tracer("github.com/livekit/egress/pkg/config")
+	externalIngestIdentifierRegex = regexp.MustCompile(`^[A-Za-z0-9_-]+$`)
 )
 
 type SourceConfig struct {
 	SourceType types.SourceType
 	WebSourceParams
 	SDKSourceParams
+	ExternalIngestSourceParams
+}
+
+type ExternalIngestSourceParams struct {
+	SessionID     string
+	ConferenceID  string
+	ParticipantID string
+	IngestTrackID string
+	Role          string
 }
 
 type WebSourceParams struct {
@@ -249,6 +260,13 @@ func (p *PipelineConfig) Update(request *rpc.StartEgressRequest) error {
 		}
 
 	case *rpc.StartEgressRequest_Web:
+		if isExternalConferenceRequest(req.Web) {
+			if err := p.updateExternalConferenceRequest(req.Web); err != nil {
+				return err
+			}
+			break
+		}
+
 		p.RequestType = types.RequestTypeWeb
 		clone := proto.Clone(req.Web).(*livekit.WebEgressRequest)
 		p.Info.Request = &livekit.EgressInfo_Web{
@@ -401,6 +419,8 @@ func (p *PipelineConfig) Update(request *rpc.StartEgressRequest) error {
 	case types.SourceTypeWeb:
 		p.Info.SourceType = livekit.EgressSourceType_EGRESS_SOURCE_TYPE_WEB
 	case types.SourceTypeSDK:
+		fallthrough
+	case types.SourceTypeExternalIngest:
 		p.Info.SourceType = livekit.EgressSourceType_EGRESS_SOURCE_TYPE_SDK
 	}
 
@@ -595,6 +615,84 @@ func (p *PipelineConfig) getRoomCompositeRequestType(req *livekit.RoomCompositeE
 	}
 	p.AudioMixing = req.AudioMixing
 	return types.SourceTypeSDK
+}
+
+func isExternalConferenceRequest(req *livekit.WebEgressRequest) bool {
+	if req == nil || req.Url == "" {
+		return false
+	}
+
+	u, err := url.Parse(req.Url)
+	if err != nil {
+		return false
+	}
+
+	return u.Query().Get("requestType") == string(types.RequestTypeExternalConference)
+}
+
+func (p *PipelineConfig) updateExternalConferenceRequest(req *livekit.WebEgressRequest) error {
+	u, err := url.Parse(req.Url)
+	if err != nil {
+		return errors.ErrInvalidInput("web url")
+	}
+
+	q := u.Query()
+	p.RequestType = types.RequestTypeExternalConference
+	p.SourceType = types.SourceTypeExternalIngest
+	p.SessionID = q.Get("sessionId")
+	p.ConferenceID = q.Get("conferenceId")
+	p.ParticipantID = q.Get("participantId")
+	p.IngestTrackID = q.Get("trackId")
+	p.Role = q.Get("role")
+
+	if err = validateExternalIngestParam("sessionId", p.SessionID); err != nil {
+		return err
+	}
+	if err = validateExternalIngestParam("conferenceId", p.ConferenceID); err != nil {
+		return err
+	}
+	if err = validateExternalIngestParam("participantId", p.ParticipantID); err != nil {
+		return err
+	}
+	if err = validateExternalIngestParam("trackId", p.IngestTrackID); err != nil {
+		return err
+	}
+
+	switch p.Role {
+	case "audio":
+		p.AudioEnabled = true
+		p.AudioTrackID = p.IngestTrackID
+		p.AudioTranscoding = true
+	case "video":
+		p.VideoEnabled = true
+		p.VideoTrackID = p.IngestTrackID
+		p.VideoDecoding = true
+	default:
+		return errors.ErrInvalidInput("role")
+	}
+
+	clone := proto.Clone(req).(*livekit.WebEgressRequest)
+	p.Info.Request = &livekit.EgressInfo_Web{Web: clone}
+	egress.RedactEncodedOutputs(clone)
+	p.Info.RoomName = p.ConferenceID
+
+	if err = p.updateEncodedOutputs(req); err != nil {
+		return err
+	}
+
+	return nil
+}
+
+func validateExternalIngestParam(field, value string) error {
+	if value == "" {
+		return errors.ErrInvalidInput(field)
+	}
+
+	if !externalIngestIdentifierRegex.MatchString(value) {
+		return errors.ErrInvalidInput(field)
+	}
+
+	return nil
 }
 
 // used for sdk input source
